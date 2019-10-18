@@ -15,7 +15,7 @@ const (
 )
 
 // Mmap creates a memory map of a file
-func Mmap(length, offset int64, prot, flags int, fd uintptr) (uintptr, error) {
+func Mmap(length, offset int64, prot, flags, fd int) (uintptr, error) {
 	var cprot C.int
 
 	switch(prot) {
@@ -41,7 +41,7 @@ func Mmap(length, offset int64, prot, flags int, fd uintptr) (uintptr, error) {
 		cprot = C.PROT_NONE
 	}
 
-	return uintptr(C.mmap(0, C.size_t(length), C.int(cprot), C.int(flags), fd, C.int(offset))), nil
+	return uintptr(C.mmap(0, C.size_t(length), C.int(cprot), C.int(flags), C.int(fd), C.int(offset))), nil
 }
 
 // Munmap deletes the mappings for the specified address range
