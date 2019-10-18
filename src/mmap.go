@@ -19,15 +19,6 @@ const (
 	PROT_READ        	  // Pages may be read.
 	PROT_WRITE            // Pages may be written.
 	PROT_READWRITE        // Pages may not be accessed.
-
-	// The flags argument determines whether updates to the mapping are
-	// visible to other processes mapping the same region, and whether
-	// updates are carried through to the underlying file.  This behavior is
-	// determined by including exactly one of the following values in flags:
-	MAP_SHARED          // Share this mapping.
-	MAP_SHARED_VALIDATE // This flag provides the same behavior as MAP_SHARED except that MAP_SHARED mappings ignore unknown flags in flags.
-	MAP_PRIVATE         // Create a private copy-on-write mapping.
-	// TODO: Add other mappings
 )
 
 // MMAP contains information about a memmory mapped file
