@@ -4,7 +4,10 @@ package cgommap
 // #include <stdlib.h>
 // #include <sys/mman.h>
 import "C"
-import "errors"
+import (
+	"errors"
+	"unsafe"
+)
 
 const (
 
@@ -28,11 +31,12 @@ const (
 )
 
 type MMAP struct {
-	file *File
-	address uintptr
+	addr uintptr
+	length int
+	offset int
 }
 
-// OpenMMap opens a memory mapped file.
+// mmap opens a memory mapped file.
 // TODO: Check if go bitwise `|` operator works on C.int properly
 func mmap(length, offset int, prot, flags C.int, filename string, mode int) (*MMAP, error) {
 	f := OpenFile(filename, mode)
@@ -45,13 +49,30 @@ func mmap(length, offset int, prot, flags C.int, filename string, mode int) (*MM
 	address := C.mmap(0, C.size_t(length), prot, flags, fd, C.int(offset))
 
 	return &MMAP{
-		file: f,
-		address: address,
+		addr: address,
+		length: length,
 	}, nil
 }
 
-func (mmap *MMAP) Close() error {
+func (mmap *MMAP) Write(buf []byte) (int, error) {
+	bufLen := len(buf)
 
+	// TODO: Does this math work when moving around the memory?
+	s := int(C.write(unsafe.Pointer(&buf[0]), mmap.addr + uintptr(mmap.offset), C.size_t(bufLen)))
+	if (s != bufLen) {
+		if (s == -1) {
+			// TODO: Check errno
+			return s, errors.New("Write error")
+		}
+
+		mmap.offset += s
+		
+		return s, errors.New("Partial Write error")
+	}
+
+	mmap.offset += s
+
+	return s, nil
 }
 
 func munmap(address uintptr, length int) error {
@@ -63,3 +84,4 @@ func munmap(address uintptr, length int) error {
 
 	return nil
 }
+
