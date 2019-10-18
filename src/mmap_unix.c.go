@@ -30,14 +30,15 @@ const (
 	// TODO: Add other mappings
 )
 
+// MMAP contains information about a memmory mapped file
 type MMAP struct {
 	file *File
 	addr uintptr
-	length int
+	size int
 	offset int
 }
 
-// mmap opens a memory mapped file.
+// Mmap opens a memory mapped file.
 // TODO: Check if go bitwise `|` operator works on C.int properly
 func Mmap(length, offset int, prot, flags C.int, filename string, mode int) (mmap *MMAP, err error) {
 	f := OpenFile(filename, mode)
@@ -58,36 +59,39 @@ func Mmap(length, offset int, prot, flags C.int, filename string, mode int) (mma
 	return &MMAP{
 		file: f,
 		addr: address,
-		length: length,
+		size: length,
 	}, nil
 }
 
 // Write buf to mmap
-func (mmap *MMAP) Write(buf []byte) (int, error) {
-	bufLen := len(buf)
+func (mmap *MMAP) Write(buf []byte) (writeLen int, err error) {
+	writeLen = len(buf)
 
-	// TODO: Does this math work when moving around the memory?
-	s := int(C.write(unsafe.Pointer(&buf[0]), mmap.addr + uintptr(mmap.offset), C.size_t(bufLen)))
-	if (s != bufLen) {
-		if (s == -1) {
-			// TODO: Check errno
-			return s, errors.New("Write error")
-		}
-
-		mmap.offset += s
-
-		return s, errors.New("Partial Write error")
+	// NB: Should we just return instead of partial Write?
+	if writeLen > mmap.size - mmap.offset {
+		writeLen = mmap.size - mmap.offset
+		err = errors.New("Partial Write")
 	}
 
-	mmap.offset += s
+	// TODO: Does this math work when moving around the memory?
+	C.memcpy(unsafe.Pointer(mmap.addr + uintptr(mmap.offset)), unsafe.Pointer(&buf[0]), C.size_t(writeLen))
+	mmap.offset += writeLen
 
-	return s, nil
+	return writeLen, err
+}
+
+// Read from mmap into buf
+func (mmap *MMAP) Read(buf []byte) (int, error) {
+	buf = (*[1 << 30]byte)(unsafe.Pointer(mmap.addr+uintptr(mmap.offset)))[:cap(buf)]
+
+	//NB: Should we return EOF or an error if len(buf) == 0?
+	return len(buf), nil
 }
 
 // Close mmap
 func (mmap *MMAP) Close() error {
 	// TODO: Handle error
-	Munmap(mmap.addr, mmap.length)
+	Munmap(mmap.addr, mmap.size)
 
 	// TODO: Handle error
 	mmap.file.Close()
