@@ -50,8 +50,7 @@ func Mmap(length, offset int64, prot, flags int, fd uintptr) (uintptr, error) {
 
 	defer C.CloseHandle(mh)
 
-	mmap := C.MapViewOfFileEx(mh, C.int(desiredAccess), C.int(0), C.int(0), C.int(length), C.NULL)
-	return *mmap, nil
+	return C.MapViewOfFileEx(mh, C.int(desiredAccess), C.int(0), C.int(0), C.int(length), C.NULL), nil
 }
 
 // Munmap deletes the mappings for the specified address range
