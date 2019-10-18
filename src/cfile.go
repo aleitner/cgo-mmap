@@ -26,8 +26,8 @@ const (
 
 // OpenFile opens a C File Pointer
 // mode can be specified with a file mode in the os package.
-func OpenFile(filename string, mode int) *File {
-	return (*File)(C.fopen(C.String(filename), C.int(mode)))
+func OpenFile(filename, mode string) *File {
+	return (*File)(C.fopen(C.CString(filename), C.CString(mode)))
 }
 
 func (f *File) Fileno() (int, error) {
@@ -95,4 +95,8 @@ func (f *File) Eof() int {
 
 func (f *File) Error() int {
 	return int(C.ferror((*C.FILE)(f)))
+}
+
+func (f *File) Tell() int64 {
+	return int64(C.ftell((*C.FILE)(f)))
 }

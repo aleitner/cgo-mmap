@@ -1,8 +1,7 @@
 package cgommap
 
 // #cgo CFLAGS: -g -Wall
-// #include <stdlib.h>
-// #include <sys/mman.h>
+// #include <string.h>
 import "C"
 import (
 "errors"
@@ -31,7 +30,7 @@ type MMAP struct {
 
 // NewMmap opens a memory mapped file.
 // TODO: Check if go bitwise `|` operator works on C.int properly
-func NewMmap(length, offset int64, prot, flags C.int, filepath string, mode int) (mmap *MMAP, err error) {
+func NewMmap(length, offset int64, prot, flags int, filepath, mode string) (mmap *MMAP, err error) {
 	f := OpenFile(filepath, mode)
 
 	defer func() {

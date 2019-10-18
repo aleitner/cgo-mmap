@@ -55,6 +55,6 @@ func Mmap(length, offset int64, prot, flags, fd int) (uintptr, error) {
 
 // Munmap deletes the mappings for the specified address range
 func Munmap(address uintptr, length int64) error {
-	C.FlushViewOfFile(address, C.int(length))
-	C.UnmapViewOfFile(address)
+	C.FlushViewOfFile(unsafe.Pointer(address), C.int(length))
+	C.UnmapViewOfFile(unsafe.Pointer(address))
 }

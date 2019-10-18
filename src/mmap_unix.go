@@ -1,7 +1,12 @@
 package cgommap
 
+// #cgo CFLAGS: -g -Wall
+// #include <sys/mman.h>
 import "C"
-import "errors"
+import (
+	"errors"
+	"unsafe"
+)
 
 const (
 	// The flags argument determines whether updates to the mapping are
@@ -9,7 +14,6 @@ const (
 	// updates are carried through to the underlying file.  This behavior is
 	// determined by including exactly one of the following values in flags:
 	MAP_SHARED = C.MAP_SHARED // Share this mapping.
-	MAP_SHARED_VALIDATE = C.MAP_SHARED_VALIDATE // This flag provides the same behavior as MAP_SHARED except that MAP_SHARED mappings ignore unknown flags in flags.
 	MAP_PRIVATE = C.MAP_PRIVATE // Create a private copy-on-write mapping.
 	// TODO: Add other mappings
 )
@@ -41,12 +45,12 @@ func Mmap(length, offset int64, prot, flags, fd int) (uintptr, error) {
 		cprot = C.PROT_NONE
 	}
 
-	return uintptr(C.mmap(0, C.size_t(length), C.int(cprot), C.int(flags), C.int(fd), C.int(offset))), nil
+	return uintptr(C.mmap(C.NULL, C.size_t(length), C.int(cprot), C.int(flags), C.int(fd), C.longlong(offset))), nil
 }
 
 // Munmap deletes the mappings for the specified address range
 func Munmap(address uintptr, length int64) error {
-	success := int(C.munmap(address, C.int(length)))
+	success := int(C.munmap(unsafe.Pointer(address), C.ulong(length)))
 	if success == -1 {
 		// TODO: Check errno
 		errors.New("Failed to unmap")
