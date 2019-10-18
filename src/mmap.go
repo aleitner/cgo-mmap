@@ -12,21 +12,21 @@ import (
 const (
 
 	// The prot argument describes the desired memory protection of the
-	// mapping (and must not conflict with the open mode of the file).  It
-	// is either PROT_NONE or the bitwise OR of one or more of the following
-	// flags:
-	PROT_EXEC = C.PROT_EXEC // Pages may be executed.
-	PROT_READ = C.PROT_READ // Pages may be read.
-	PROT_WRITE = C.PROT_WRITE // Pages may be written.
-	PROT_NONE = C.PROT_NONE // Pages may not be accessed.
+	// mapping (and must not conflict with the open mode of the file).
+	PROT_EXEC_READ = iota // Allows views to be mapped for read-only, copy-on-write, or execute access.
+	PROT_EXEC_WRITE       // Allows views to be mapped for read-only, copy-on-write, or execute access.
+	PROT_EXEC_READWRITE   // Allows views to be mapped for read-only, copy-on-write, read/write, or execute access.
+	PROT_READ        	  // Pages may be read.
+	PROT_WRITE            // Pages may be written.
+	PROT_READWRITE        // Pages may not be accessed.
 
 	// The flags argument determines whether updates to the mapping are
 	// visible to other processes mapping the same region, and whether
 	// updates are carried through to the underlying file.  This behavior is
 	// determined by including exactly one of the following values in flags:
-	MAP_SHARED = C.MAP_SHARED // Share this mapping.
-	MAP_SHARED_VALIDATE = C.MAP_SHARED_VALIDATE // This flag provides the same behavior as MAP_SHARED except that MAP_SHARED mappings ignore unknown flags in flags.
-	MAP_PRIVATE = C.MAP_PRIVATE // Create a private copy-on-write mapping.
+	MAP_SHARED          // Share this mapping.
+	MAP_SHARED_VALIDATE // This flag provides the same behavior as MAP_SHARED except that MAP_SHARED mappings ignore unknown flags in flags.
+	MAP_PRIVATE         // Create a private copy-on-write mapping.
 	// TODO: Add other mappings
 )
 
@@ -54,7 +54,10 @@ func NewMmap(length, offset int64, prot, flags C.int, filepath string, mode int)
 		return nil, err
 	}
 
-	address := Mmap(length, offset, prot, flags, fd)
+	address, err := Mmap(length, offset, prot, flags, fd)
+	if err != nil {
+		return nil, err
+	}
 
 	return &MMAP{
 		file: f,
@@ -100,6 +103,8 @@ func (mmap *MMAP) Seek(off int64, origin int) (newOffset int64, err error) {
 	case SEEK_END:
 		newOffset = off + mmap.size - 1
 		break
+	default:
+		return mmap.offset, errors.New("Invalid origin")
 	}
 
 	if newOffset > mmap.size {
