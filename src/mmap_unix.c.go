@@ -31,6 +31,7 @@ const (
 )
 
 type MMAP struct {
+	file *File
 	addr uintptr
 	length int
 	offset int
@@ -38,8 +39,14 @@ type MMAP struct {
 
 // mmap opens a memory mapped file.
 // TODO: Check if go bitwise `|` operator works on C.int properly
-func mmap(length, offset int, prot, flags C.int, filename string, mode int) (*MMAP, error) {
+func Mmap(length, offset int, prot, flags C.int, filename string, mode int) (mmap *MMAP, err error) {
 	f := OpenFile(filename, mode)
+
+	defer func() {
+		if err != nil {
+			f.Close()
+		}
+	}()
 
 	fd, err := f.Fileno()
 	if err != nil {
@@ -49,11 +56,13 @@ func mmap(length, offset int, prot, flags C.int, filename string, mode int) (*MM
 	address := C.mmap(0, C.size_t(length), prot, flags, fd, C.int(offset))
 
 	return &MMAP{
+		file: f,
 		addr: address,
 		length: length,
 	}, nil
 }
 
+// Write buf to mmap
 func (mmap *MMAP) Write(buf []byte) (int, error) {
 	bufLen := len(buf)
 
@@ -66,7 +75,7 @@ func (mmap *MMAP) Write(buf []byte) (int, error) {
 		}
 
 		mmap.offset += s
-		
+
 		return s, errors.New("Partial Write error")
 	}
 
@@ -75,7 +84,19 @@ func (mmap *MMAP) Write(buf []byte) (int, error) {
 	return s, nil
 }
 
-func munmap(address uintptr, length int) error {
+// Close mmap
+func (mmap *MMAP) Close() error {
+	// TODO: Handle error
+	Munmap(mmap.addr, mmap.length)
+
+	// TODO: Handle error
+	mmap.file.Close()
+
+	return nil
+}
+
+// Munmap deletes the mappings for the specified address range
+func Munmap(address uintptr, length int) error {
 	success := int(C.munmap(address, C.int(length)))
 	if success == -1 {
 		// TODO: Check errno
