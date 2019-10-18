@@ -34,14 +34,14 @@ const (
 type MMAP struct {
 	file *File
 	addr uintptr
-	size int
-	offset int
+	size int64
+	offset int64
 }
 
 // Mmap opens a memory mapped file.
 // TODO: Check if go bitwise `|` operator works on C.int properly
-func Mmap(length, offset int, prot, flags C.int, filename string, mode int) (mmap *MMAP, err error) {
-	f := OpenFile(filename, mode)
+func Mmap(length, offset int64, prot, flags C.int, filepath string, mode int) (mmap *MMAP, err error) {
+	f := OpenFile(filepath, mode)
 
 	defer func() {
 		if err != nil {
@@ -54,7 +54,7 @@ func Mmap(length, offset int, prot, flags C.int, filename string, mode int) (mma
 		return nil, err
 	}
 
-	address := C.mmap(0, C.size_t(length), prot, flags, fd, C.int(offset))
+	address := uintptr(C.mmap(0, C.size_t(length), prot, flags, fd, C.int(offset)))
 
 	return &MMAP{
 		file: f,
@@ -64,8 +64,8 @@ func Mmap(length, offset int, prot, flags C.int, filename string, mode int) (mma
 }
 
 // Write buf to mmap
-func (mmap *MMAP) Write(buf []byte) (writeLen int, err error) {
-	writeLen = len(buf)
+func (mmap *MMAP) Write(buf []byte) (writeLen int64, err error) {
+	writeLen = int64(len(buf))
 
 	// NB: Should we just return instead of partial Write?
 	if writeLen > mmap.size - mmap.offset {
@@ -88,6 +88,29 @@ func (mmap *MMAP) Read(buf []byte) (int, error) {
 	return len(buf), nil
 }
 
+// Seek mmap
+func (mmap *MMAP) Seek(off int64, origin int) (newOffset int64, err error) {
+	switch origin {
+	case SEEK_CUR:
+		newOffset = off + mmap.offset
+		break
+	case SEEK_SET:
+		newOffset = off
+		break
+	case SEEK_END:
+		newOffset = off + mmap.size - 1
+		break
+	}
+
+	if newOffset > mmap.size {
+		return mmap.offset, errors.New("Invalid Seek")
+	}
+	mmap.offset = newOffset
+
+	return newOffset, nil
+}
+
+
 // Close mmap
 func (mmap *MMAP) Close() error {
 	// TODO: Handle error
@@ -100,7 +123,7 @@ func (mmap *MMAP) Close() error {
 }
 
 // Munmap deletes the mappings for the specified address range
-func Munmap(address uintptr, length int) error {
+func Munmap(address uintptr, length int64) error {
 	success := int(C.munmap(address, C.int(length)))
 	if success == -1 {
 		// TODO: Check errno
