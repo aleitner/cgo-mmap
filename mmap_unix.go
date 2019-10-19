@@ -1,7 +1,9 @@
 package cgommap
-
 // #cgo CFLAGS: -g -Wall
 // #include <sys/mman.h>
+// #include <stdio.h>
+// #include <stdlib.h>
+// #include <unistd.h>
 import "C"
 import (
 	"errors"
@@ -45,6 +47,7 @@ func Mmap(length, offset int64, prot, flags, fd int) (uintptr, error) {
 		cprot = C.PROT_NONE
 	}
 
+	//TODO: handle offset for mmap() must be page aligned
 	return uintptr(C.mmap(C.NULL, C.size_t(length), C.int(cprot), C.int(flags), C.int(fd), C.longlong(offset))), nil
 }
 

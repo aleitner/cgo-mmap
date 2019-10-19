@@ -32,7 +32,13 @@ const (
 // OpenFile opens a C File Pointer
 // mode can be specified with a file mode in the os package.
 func OpenFile(filename, mode string) *File {
-	return (*File)(C.fopen(C.CString(filename), C.CString(mode)))
+	cFilename := C.CString(filename)
+	defer C.free(unsafe.Pointer(cFilename))
+
+	cMode := C.CString(mode)
+	defer C.free(unsafe.Pointer(cMode))
+
+	return (*File)(C.fopen(cFilename, cMode))
 }
 
 func (f *File) Fileno() (int, error) {

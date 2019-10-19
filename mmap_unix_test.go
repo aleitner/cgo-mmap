@@ -27,7 +27,9 @@ func TestMmap(t *testing.T) {
 	testText := []byte("Testing the memory mapped file")
 	n, err := f.Write(testText)
 	require.NoError(t, err)
-	require.Equal(t, n, len(testText))
+	require.Equal(t, len(testText), n)
+
+	f.Flush()
 
 	fd, err := f.Fileno()
 	require.NoError(t, err)
@@ -38,7 +40,8 @@ func TestMmap(t *testing.T) {
 	var buf []byte
 	n, err = mmap.Read(buf)
 	require.NoError(t, err)
-	require.Equal(t, buf[:len(testText)], testText)
+	require.Equal(t, len(testText), len(buf))
+	require.Equal(t, testText, buf)
 
 	err = mmap.Close()
 	require.NoError(t, err)

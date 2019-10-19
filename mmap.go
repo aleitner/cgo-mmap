@@ -12,12 +12,12 @@ const (
 
 	// The prot argument describes the desired memory protection of the
 	// mapping (and must not conflict with the open mode of the file).
-	PROT_EXEC_READ = iota // Allows views to be mapped for read-only, copy-on-write, or execute access.
-	PROT_EXEC_WRITE       // Allows views to be mapped for read-only, copy-on-write, or execute access.
-	PROT_EXEC_READWRITE   // Allows views to be mapped for read-only, copy-on-write, read/write, or execute access.
-	PROT_READ        	  // Pages may be read.
-	PROT_WRITE            // Pages may be written.
-	PROT_READWRITE        // Pages may not be accessed.
+	PROT_EXEC_READ = iota +1 // Allows views to be mapped for read-only, copy-on-write, or execute access.
+	PROT_EXEC_WRITE          // Allows views to be mapped for read-only, copy-on-write, or execute access.
+	PROT_EXEC_READWRITE      // Allows views to be mapped for read-only, copy-on-write, read/write, or execute access.
+	PROT_READ        	     // Pages may be read.
+	PROT_WRITE               // Pages may be written.
+	PROT_READWRITE           // Pages may not be accessed.
 )
 
 // MMAP contains information about a memory mapped file
@@ -30,6 +30,9 @@ type MMAP struct {
 // NewMmap opens a memory mapped file.
 // TODO: Check if go bitwise `|` operator works on C.int properly
 func NewMmap(length, offset int64, prot, flags, fd int) (mmap *MMAP, err error) {
+	if offset > length || offset < 0 {
+		return nil, errors.New("Invalid offset")
+	}
 	address, err := Mmap(length, offset, prot, flags, fd)
 	if err != nil {
 		return nil, err
