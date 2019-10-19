@@ -63,7 +63,17 @@ func (mmap *MMAP) Write(buf []byte) (writeLen int64, err error) {
 
 // Read from mmap into buf
 func (mmap *MMAP) Read(buf []byte) (int, error) {
-	buf = (*[1 << 30]byte)(unsafe.Pointer(mmap.addr+uintptr(mmap.offset)))[:mmap.size-mmap.offset]
+
+	var sl = struct {
+		addr uintptr
+		len  int
+		cap  int
+	}{mmap.addr+uintptr(mmap.offset), int(mmap.size-mmap.offset), int(mmap.size-mmap.offset)}
+
+	mmapBuf := *(*[]byte)(unsafe.Pointer(&sl))
+
+	copy(buf, mmapBuf[:mmap.size-mmap.offset])
+
 	mmap.offset += int64(len(buf))
 
 	//NB: Should we return EOF or an error if len(buf) == 0?

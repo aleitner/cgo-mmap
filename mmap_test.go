@@ -37,8 +37,9 @@ func TestMmap(t *testing.T) {
 	mmap, err := cgommap.NewMmap(int64(len(testText)),0, cgommap.PROT_READ, cgommap.MAP_SHARED, fd)
 	require.NoError(t, err)
 
-	var buf []byte
-	n, err = mmap.Read(buf)
+	buf := make([]byte, len(testText))
+	n, err = mmap.Read(buf[0:])
+
 	require.NoError(t, err)
 	require.Equal(t, len(testText), len(buf))
 	require.Equal(t, testText, buf)
