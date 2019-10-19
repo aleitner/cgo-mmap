@@ -6,6 +6,7 @@ import "C"
 import (
 	"errors"
 	"io"
+	"sync"
 	"unsafe"
 )
 
@@ -26,6 +27,7 @@ type MMAP struct {
 	addr uintptr
 	size int64
 	offset int64
+	mtx sync.Mutex
 }
 
 // NewMmap opens a memory mapped file.
@@ -57,6 +59,9 @@ func (mmap *MMAP) Write(buf []byte) (writeLen int64, err error) {
 
 	// TODO: Does this math work when moving around the memory?
 	C.memcpy(unsafe.Pointer(mmap.addr + uintptr(mmap.offset)), unsafe.Pointer(&buf[0]), C.size_t(writeLen))
+
+	mmap.mtx.Lock()
+	defer mmap.mtx.Unlock()
 	mmap.offset += writeLen
 
 	return writeLen, err
@@ -64,26 +69,27 @@ func (mmap *MMAP) Write(buf []byte) (writeLen int64, err error) {
 
 // Read from mmap into buf
 func (mmap *MMAP) Read(buf []byte) (n int, err error) {
+	toReadLen := mmap.size-mmap.offset
 
 	var sl = struct {
 		addr uintptr
 		len  int
 		cap  int
-	}{mmap.addr+uintptr(mmap.offset), int(mmap.size-mmap.offset), int(mmap.size-mmap.offset)}
+	}{mmap.addr+uintptr(mmap.offset), 0, int(toReadLen)}
 
 	mmapBuf := *(*[]byte)(unsafe.Pointer(&sl))
 
-	copy(buf, mmapBuf[:mmap.size-mmap.offset])
+	copy(buf, mmapBuf[:toReadLen])
 
-	n = len(buf)
-
-	mmap.offset += int64(n)
-
-	if n == 0 {
-		err = io.EOF
+	if toReadLen == 0 {
+		return 0, io.EOF
 	}
 
-	return n, nil
+	mmap.mtx.Lock()
+	defer mmap.mtx.Unlock()
+	mmap.offset += int64(toReadLen)
+
+	return int(toReadLen), err
 }
 
 // Seek mmap
@@ -105,6 +111,9 @@ func (mmap *MMAP) Seek(off int64, origin int) (newOffset int64, err error) {
 	if newOffset > mmap.size {
 		return mmap.offset, errors.New("Invalid Seek")
 	}
+
+	mmap.mtx.Lock()
+	defer mmap.mtx.Unlock()
 	mmap.offset = newOffset
 
 	return newOffset, nil

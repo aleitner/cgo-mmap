@@ -1,6 +1,7 @@
 package cgommap_test
 
 import (
+	"bytes"
 	"cgommap"
 	"github.com/stretchr/testify/require"
 	"io/ioutil"
@@ -37,12 +38,31 @@ func TestMmap(t *testing.T) {
 	mmap, err := cgommap.NewMmap(int64(len(testText)),0, cgommap.PROT_READ, cgommap.MAP_SHARED, fd)
 	require.NoError(t, err)
 
-	buf := make([]byte, len(testText))
-	n, err = mmap.Read(buf[0:])
+	{ // Read Test
+		buf := make([]byte, len(testText))
+		n, err = mmap.Read(buf[0:])
+		require.NoError(t, err)
+		require.Equal(t, len(testText), len(buf))
+		require.True(t, bytes.Equal(testText, buf))
 
-	require.NoError(t, err)
-	require.Equal(t, len(testText), len(buf))
-	require.Equal(t, testText, buf)
+		buf = make([]byte, len(testText))
+		n, err = mmap.Read(buf[0:])
+		require.Error(t, err)
+	}
+
+
+	{ // Seek test
+		off, err := mmap.Seek(0, cgommap.SEEK_SET)
+		require.NoError(t, err)
+		require.Equal(t, int64(0), off)
+
+		buf := make([]byte, len(testText))
+		n, err = mmap.Read(buf[0:])
+		require.NoError(t, err)
+		require.Equal(t, len(testText), len(buf))
+		require.True(t, bytes.Equal(testText, buf))
+	}
+
 
 	err = mmap.Close()
 	require.NoError(t, err)
