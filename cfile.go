@@ -22,6 +22,11 @@ const (
 	SEEK_CUR = C.SEEK_CUR
 	SEEK_SET = C.SEEK_SET
 	SEEK_END = C.SEEK_END
+
+	READ_ONLY = "r"
+	WRITE_ONLY = "w" // Creates file if it doesn't exist
+	READWRITE = "r+"
+	READWRITE_TRUNCATE = "w+" // Truncates the file if it already exists or Creates file if it doesn't exist.
 )
 
 // OpenFile opens a C File Pointer

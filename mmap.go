@@ -4,8 +4,8 @@ package cgommap
 // #include <string.h>
 import "C"
 import (
-"errors"
-"unsafe"
+	"errors"
+	"unsafe"
 )
 
 const (
@@ -20,9 +20,8 @@ const (
 	PROT_READWRITE        // Pages may not be accessed.
 )
 
-// MMAP contains information about a memmory mapped file
+// MMAP contains information about a memory mapped file
 type MMAP struct {
-	file *File
 	addr uintptr
 	size int64
 	offset int64
@@ -30,27 +29,13 @@ type MMAP struct {
 
 // NewMmap opens a memory mapped file.
 // TODO: Check if go bitwise `|` operator works on C.int properly
-func NewMmap(length, offset int64, prot, flags int, filepath, mode string) (mmap *MMAP, err error) {
-	f := OpenFile(filepath, mode)
-
-	defer func() {
-		if err != nil {
-			f.Close()
-		}
-	}()
-
-	fd, err := f.Fileno()
-	if err != nil {
-		return nil, err
-	}
-
+func NewMmap(length, offset int64, prot, flags, fd int) (mmap *MMAP, err error) {
 	address, err := Mmap(length, offset, prot, flags, fd)
 	if err != nil {
 		return nil, err
 	}
 
 	return &MMAP{
-		file: f,
 		addr: address,
 		size: length,
 	}, nil
@@ -75,7 +60,8 @@ func (mmap *MMAP) Write(buf []byte) (writeLen int64, err error) {
 
 // Read from mmap into buf
 func (mmap *MMAP) Read(buf []byte) (int, error) {
-	buf = (*[1 << 30]byte)(unsafe.Pointer(mmap.addr+uintptr(mmap.offset)))[:cap(buf)]
+	buf = (*[1 << 30]byte)(unsafe.Pointer(mmap.addr+uintptr(mmap.offset)))[:mmap.size-mmap.offset]
+	mmap.offset += int64(len(buf))
 
 	//NB: Should we return EOF or an error if len(buf) == 0?
 	return len(buf), nil
@@ -108,12 +94,6 @@ func (mmap *MMAP) Seek(off int64, origin int) (newOffset int64, err error) {
 
 // Close mmap
 func (mmap *MMAP) Close() error {
-	// TODO: Handle error
-	Munmap(mmap.addr, mmap.size)
-
-	// TODO: Handle error
-	mmap.file.Close()
-
-	return nil
+	return Munmap(mmap.addr, mmap.size)
 }
 
