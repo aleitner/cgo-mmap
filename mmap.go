@@ -5,6 +5,7 @@ package cgommap
 import "C"
 import (
 	"errors"
+	"io"
 	"unsafe"
 )
 
@@ -62,7 +63,7 @@ func (mmap *MMAP) Write(buf []byte) (writeLen int64, err error) {
 }
 
 // Read from mmap into buf
-func (mmap *MMAP) Read(buf []byte) (int, error) {
+func (mmap *MMAP) Read(buf []byte) (n int, err error) {
 
 	var sl = struct {
 		addr uintptr
@@ -74,10 +75,15 @@ func (mmap *MMAP) Read(buf []byte) (int, error) {
 
 	copy(buf, mmapBuf[:mmap.size-mmap.offset])
 
-	mmap.offset += int64(len(buf))
+	n = len(buf)
 
-	//NB: Should we return EOF or an error if len(buf) == 0?
-	return len(buf), nil
+	mmap.offset += int64(n)
+
+	if n == 0 {
+		err = io.EOF
+	}
+
+	return n, nil
 }
 
 // Seek mmap
