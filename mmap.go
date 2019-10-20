@@ -155,8 +155,13 @@ func (m MMAP) Size() int64 {
 }
 
 // Close will unmap the pages of memory
-func (m MMAP) Close() error {
-	return unmap(m.addr, m.size)
+func (m *MMAP) Close() error {
+	if err := unmap(m.addr, m.size); err != nil {
+		return err
+	}
+
+	m = nil
+	return nil
 }
 
 // Lock the mapped memory
