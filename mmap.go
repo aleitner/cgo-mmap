@@ -11,7 +11,6 @@ import (
 )
 
 const (
-
 	// The prot argument describes the desired memory protection of the
 	// mapping (and must not conflict with the open mode of the file).
 	PROT_EXEC_READ = iota +1 // Allows views to be mapped for read-only, copy-on-write, or execute access.
@@ -97,13 +96,13 @@ func (mmap *MMAP) Read(buf []byte) (n int, err error) {
 // Seek mmap
 func (mmap *MMAP) Seek(off int64, origin int) (newOffset int64, err error) {
 	switch origin {
-	case SEEK_CUR:
+	case io.SeekCurrent:
 		newOffset = off + mmap.offset
 		break
-	case SEEK_SET:
+	case io.SeekStart:
 		newOffset = off
 		break
-	case SEEK_END:
+	case io.SeekEnd:
 		newOffset = off + mmap.size - 1
 		break
 	default:

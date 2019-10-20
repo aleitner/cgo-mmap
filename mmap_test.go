@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"cgommap"
 	"github.com/stretchr/testify/require"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -16,26 +17,15 @@ func TestMmap(t *testing.T) {
 		log.Fatal(err)
 	}
 	defer os.Remove(file.Name())
-
-	file.Close()
-
-	f := cgommap.OpenFile(file.Name(), cgommap.READWRITE_TRUNCATE)
-	defer func() {
-		err := f.Close()
-		require.NoError(t, err)
-	}()
+	defer file.Close()
 
 	testText := []byte("Testing the memory mapped file")
-	n, err := f.Write(testText)
+	n, err := file.Write(testText)
 	require.NoError(t, err)
 	require.Equal(t, len(testText), n)
-
-	f.Flush()
-
-	fd, err := f.Fileno()
 	require.NoError(t, err)
 
-	mmap, err := cgommap.NewMmap(int64(len(testText)),0, cgommap.PROT_READWRITE, cgommap.MAP_SHARED, fd)
+	mmap, err := cgommap.NewMmap(int64(len(testText)),0, cgommap.PROT_READWRITE, cgommap.MAP_SHARED, int(file.Fd()))
 	require.NoError(t, err)
 
 	{ // Read Test
@@ -52,7 +42,7 @@ func TestMmap(t *testing.T) {
 
 
 	{ // Seek test
-		off, err := mmap.Seek(0, cgommap.SEEK_SET)
+		off, err := mmap.Seek(0, io.SeekStart)
 		require.NoError(t, err)
 		require.Equal(t, int64(0), off)
 
@@ -63,7 +53,7 @@ func TestMmap(t *testing.T) {
 		require.True(t, bytes.Equal(testText, buf))
 
 		// Seek to middle of text
-		off, err = mmap.Seek(int64(len(testText)/2), cgommap.SEEK_SET)
+		off, err = mmap.Seek(int64(len(testText)/2), io.SeekStart)
 		require.NoError(t, err)
 		require.Equal(t, int64(len(testText)/2), off)
 
@@ -75,7 +65,7 @@ func TestMmap(t *testing.T) {
 	}
 
 	{ // Write Test
-		off, err := mmap.Seek(0, cgommap.SEEK_SET)
+		off, err := mmap.Seek(0, io.SeekStart)
 		require.NoError(t, err)
 		require.Equal(t, int64(0), off)
 
@@ -84,7 +74,7 @@ func TestMmap(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, len(testWriteText), n)
 
-		off, err = mmap.Seek(0, cgommap.SEEK_SET)
+		off, err = mmap.Seek(0, io.SeekStart)
 		require.NoError(t, err)
 		require.Equal(t, int64(0), off)
 
