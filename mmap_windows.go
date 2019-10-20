@@ -3,12 +3,13 @@ package cgommap
 // #cgo CFLAGS: -g -Wall
 // #include <windows.h>
 import "C"
+import "unsafe"
 
 // mmap creates a memory map of a file
 func mmap(length, offset int64, prot, flags int, fd uintptr) (uintptr, error) {
 	fh := C.HANDLE(C._get_osfhandle(C.int(fd)))
 	if (fh == C.INVALID_HANDLE_VALUE) {
-		return 0, errors.New("Invalid Handle Value")
+		return 0, errors.New("mmap error: Handle error: Invalid Handle Value")
 	}
 
 	var protection C.int
@@ -40,12 +41,12 @@ func mmap(length, offset int64, prot, flags int, fd uintptr) (uintptr, error) {
 		desiredAccess = C.FILE_MAP_EXECUTE | FILE_MAP_ALL_ACCESS
 		break
 	default:
-		return 0, errors.New("Invalid protection value")
+		return 0, errors.New("mmap error: Invalid protection value")
 	}
 
 	mh := C.CreateFileMapping(fh, C.NULL, C.int(protection), C.int(0), C.int(0), C.NULL)
 	if (!mh) {
-		return 0, errors.New("Failed to create file mapping")
+		return 0, os.NewSyscallError("mmap error: CreateFileMapping error", C.GetLastError())
 	}
 
 	defer C.CloseHandle(mh)
@@ -53,8 +54,35 @@ func mmap(length, offset int64, prot, flags int, fd uintptr) (uintptr, error) {
 	return C.MapViewOfFileEx(mh, C.int(desiredAccess), C.int(0), C.int(0), C.int(length), C.NULL), nil
 }
 
-// munmap deletes the mappings for the specified address range
-func munmap(address uintptr, length int64) error {
-	C.FlushViewOfFile(unsafe.Pointer(address), C.int(length))
-	C.UnmapViewOfFile(unsafe.Pointer(address))
+// unmap deletes the mappings for the specified address range
+func unmap(addr uintptr, length int64) error {
+
+	// TODO: Handle errorss
+	_ = flush(addr, length)
+	_ = C.UnmapViewOfFile(unsafe.Pointer(addr))
+}
+
+// lock the mapped memory, ensuring that subsequent access to the region will not incur a page fault.
+func lock(addr uintptr, len int64) error {
+	if success := C.VirtualLock(unsafe.Pointer(addr), C.SIZE_T(len)); success != 0 {
+		return os.NewSyscallError("lock error: VirtualLock error", C.GetLastError())
+	}
+	return nil
+}
+
+// unlock the mapped memory, enabling the system to swap the pages out to the paging file if necessary.
+func unlock(addr uintptr, len int64) error {
+	if success := C.VirtualUnlock(unsafe.Pointer(addr), C.SIZE_T(len)); success != 0 {
+		return os.NewSyscallError("unlock error: VirtualUnlock error", C.GetLastError())
+	}
+	return nil
+}
+
+// flush the mapped view of a file to disk.
+func flush(addr uintptr, length int64, flags int) error {
+	if success := C.FlushViewOfFile(unsafe.Pointer(addr), C.int(len)); success != 0 {
+		return os.NewSyscallError("flush error: FlushViewOfFile error", C.GetLastError())
+	}
+
+	return nil
 }

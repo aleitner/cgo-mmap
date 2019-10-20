@@ -13,20 +13,22 @@ import (
 const (
 	// The prot argument describes the desired memory protection of the
 	// mapping (and must not conflict with the open mode of the file).
-	PROT_EXEC_READ = iota +1 // Allows views to be mapped for read-only, copy-on-write, or execute access.
-	PROT_EXEC_WRITE          // Allows views to be mapped for read-only, copy-on-write, or execute access.
-	PROT_EXEC_READWRITE      // Allows views to be mapped for read-only, copy-on-write, read/write, or execute access.
-	PROT_READ        	     // Pages may be read.
-	PROT_WRITE               // Pages may be written.
-	PROT_READWRITE           // Pages may not be accessed.
+	PROT_EXEC_READ      = iota + 1 // Allows views to be mapped for read-only, copy-on-write, or execute access.
+	PROT_EXEC_WRITE                // Allows views to be mapped for read-only, copy-on-write, or execute access.
+	PROT_EXEC_READWRITE            // Allows views to be mapped for read-only, copy-on-write, read/write, or execute access.
+	PROT_READ                      // Pages may be read.
+	PROT_WRITE                     // Pages may be written.
+	PROT_READWRITE                 // Pages may not be accessed.
 )
 
 // MMAP contains information about a memory mapped file
 type MMAP struct {
-	addr uintptr
-	size int64
-	offset int64
-	mtx sync.Mutex
+	addr      uintptr
+	size      int64
+	offset    int64
+	readable  bool
+	writeable bool
+	mtx       sync.Mutex
 }
 
 // New opens a memory mapped file.
@@ -39,18 +41,42 @@ func New(length, offset int64, prot, flags int, fd uintptr) (m *MMAP, err error)
 		return nil, err
 	}
 
+	readable := false
+	writeable := false
+	switch prot {
+	case PROT_READ:
+	case PROT_EXEC_READ:
+		readable = true
+		break
+	case PROT_EXEC_WRITE:
+	case PROT_WRITE:
+		writeable = true
+		break
+	case PROT_EXEC_READWRITE:
+	case PROT_READWRITE:
+		writeable = true
+		readable = true
+		break
+	}
+
 	return &MMAP{
-		addr: address,
-		size: length,
+		addr:      address,
+		size:      length,
+		readable:  readable,
+		writeable: writeable,
 	}, nil
 }
 
 // Write buf to mmap
 func (m *MMAP) Write(buf []byte) (writeLen int, err error) {
+	if !m.writeable {
+		return 0, errors.New("Invalid write: Insufficient permissions")
+	}
+
 	writeLen = len(buf)
 
 	// NB: Should we just return instead of partial Write?
-	if int64(writeLen) > m.size - m.offset {
+	if int64(writeLen) > m.size-m.offset {
 		writeLen = int(m.size - m.offset)
 		if writeLen == 0 {
 			return 0, io.EOF
@@ -58,7 +84,7 @@ func (m *MMAP) Write(buf []byte) (writeLen int, err error) {
 		err = errors.New("Partial Write")
 	}
 
-	C.memcpy(unsafe.Pointer(m.addr + uintptr(m.offset)), unsafe.Pointer(&buf[0]), C.size_t(writeLen))
+	C.memcpy(unsafe.Pointer(m.addr+uintptr(m.offset)), unsafe.Pointer(&buf[0]), C.size_t(writeLen))
 
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
@@ -69,13 +95,17 @@ func (m *MMAP) Write(buf []byte) (writeLen int, err error) {
 
 // Read from mmap into buf
 func (m *MMAP) Read(buf []byte) (n int, err error) {
-	toReadLen := m.size-m.offset
+	if !m.readable {
+		return 0, errors.New("Invalid read: Insufficient permissions")
+	}
+
+	toReadLen := m.size - m.offset
 
 	var sl = struct {
 		addr uintptr
 		len  int
 		cap  int
-	}{m.addr+uintptr(m.offset), 0, int(toReadLen)}
+	}{m.addr + uintptr(m.offset), 0, int(toReadLen)}
 
 	mmapBuf := *(*[]byte)(unsafe.Pointer(&sl))
 
@@ -126,19 +156,18 @@ func (m MMAP) Size() int64 {
 
 // Close mmap
 func (m MMAP) Close() error {
-	return munmap(m.addr, m.size)
+	return unmap(m.addr, m.size)
 }
 
-// TODO
 
-func (m MMAP) lock() error {
-	return nil
+func (m MMAP) Lock() error {
+	return lock(m.addr, m.size)
 }
 
-func (m MMAP) unlock() error {
-	return nil
+func (m MMAP) Unlock() error {
+	return unlock(m.addr, m.size)
 }
 
 func (m MMAP) Flush() error {
-	return nil
+	return flush(m.addr, m.size, MS_SYNC)
 }
