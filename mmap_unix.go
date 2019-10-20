@@ -48,7 +48,10 @@ func Mmap(length, offset int64, prot, flags int, fd uintptr) (uintptr, error) {
 		cprot = C.PROT_NONE
 	}
 
-	//NB: offset for mmap() must be page aligned
+	//NB: offset for mmap() must be page aligned.
+	// get the page size and makes sure that pa_offset is either zero or a multiple of the page size (4096)
+	// Assuming the page size is a power of two, then one less than the page-size will have all bits set
+	// until the bit that represents the power of two corresponding to the page size.
 	offset -= offset & int64(^(os.Getpagesize() - 1))
 
 	return uintptr(C.mmap(C.NULL, C.size_t(length), C.int(cprot), C.int(flags), C.int(fd), C.longlong(offset))), nil
