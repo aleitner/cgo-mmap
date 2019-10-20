@@ -25,17 +25,22 @@ func TestMmap(t *testing.T) {
 	require.Equal(t, len(testText), n)
 	require.NoError(t, err)
 
-	mmap, err := cgommap.NewMmap(int64(len(testText)),0, cgommap.PROT_READWRITE, cgommap.MAP_SHARED, int(file.Fd()))
+	mmap, err := cgommap.NewMmap(int64(len(testText)),0, cgommap.PROT_READWRITE, cgommap.MAP_SHARED, file.Fd())
 	require.NoError(t, err)
 
+	defer func() {
+		err = mmap.Close()
+		require.NoError(t, err)
+	}()
+
 	{ // Read Test
-		buf := make([]byte, len(testText))
+		buf := make([]byte, mmap.Size())
 		n, err = mmap.Read(buf[0:])
 		require.NoError(t, err)
 		require.Equal(t, len(testText), len(buf))
 		require.True(t, bytes.Equal(testText, buf))
 
-		buf = make([]byte, len(testText))
+		buf = make([]byte, mmap.Size())
 		n, err = mmap.Read(buf[0:])
 		require.Error(t, err)
 	}
@@ -46,7 +51,7 @@ func TestMmap(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, int64(0), off)
 
-		buf := make([]byte, len(testText))
+		buf := make([]byte, mmap.Size())
 		n, err = mmap.Read(buf[0:])
 		require.NoError(t, err)
 		require.Equal(t, len(testText), len(buf))
@@ -78,7 +83,7 @@ func TestMmap(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, int64(0), off)
 
-		buf := make([]byte, len(testWriteText))
+		buf := make([]byte, mmap.Size())
 		n, err = mmap.Read(buf[0:])
 		require.NoError(t, err)
 		require.Equal(t, len(testWriteText), len(buf))
@@ -88,7 +93,4 @@ func TestMmap(t *testing.T) {
 		_, err = mmap.Write(testWriteText)
 		require.Error(t, err)
 	}
-
-	err = mmap.Close()
-	require.NoError(t, err)
 }

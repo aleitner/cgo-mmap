@@ -31,7 +31,7 @@ type MMAP struct {
 
 // NewMmap opens a memory mapped file.
 // TODO: Check if go bitwise `|` operator works on C.int properly
-func NewMmap(length, offset int64, prot, flags, fd int) (mmap *MMAP, err error) {
+func NewMmap(length, offset int64, prot, flags int, fd uintptr) (mmap *MMAP, err error) {
 	if offset > length || offset < 0 {
 		return nil, errors.New("Invalid offset")
 	}
@@ -120,6 +120,10 @@ func (mmap *MMAP) Seek(off int64, origin int) (newOffset int64, err error) {
 	return newOffset, nil
 }
 
+// Size of the mmap
+func (mmap *MMAP) Size() int64 {
+	return mmap.size
+}
 
 // Close mmap
 func (mmap *MMAP) Close() error {

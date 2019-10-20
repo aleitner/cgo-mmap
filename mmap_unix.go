@@ -21,7 +21,7 @@ const (
 )
 
 // Mmap creates a memory map of a file
-func Mmap(length, offset int64, prot, flags, fd int) (uintptr, error) {
+func Mmap(length, offset int64, prot, flags int, fd uintptr) (uintptr, error) {
 	var cprot C.int
 
 	switch(prot) {

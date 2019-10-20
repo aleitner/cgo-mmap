@@ -1,8 +1,6 @@
 # CGO-mmap
 
-Small library for memory mapping files in go.
-
-You should probably just use syscall instead of this
+Small cross-platform library for memory mapped file I/O in golang.
 
 ## Installation
 

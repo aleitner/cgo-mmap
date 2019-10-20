@@ -5,7 +5,7 @@ package cgommap
 import "C"
 
 // Mmap creates a memory map of a file
-func Mmap(length, offset int64, prot, flags, fd int) (uintptr, error) {
+func Mmap(length, offset int64, prot, flags int, fd uintptr) (uintptr, error) {
 	fh := C.HANDLE(C._get_osfhandle(C.int(fd)))
 	if (fh == C.INVALID_HANDLE_VALUE) {
 		return 0, errors.New("Invalid Handle Value")
