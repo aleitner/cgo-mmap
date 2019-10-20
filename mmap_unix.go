@@ -7,6 +7,7 @@ package cgommap
 import "C"
 import (
 	"errors"
+	"os"
 	"unsafe"
 )
 
@@ -47,7 +48,9 @@ func Mmap(length, offset int64, prot, flags int, fd uintptr) (uintptr, error) {
 		cprot = C.PROT_NONE
 	}
 
-	//TODO: handle offset for mmap() must be page aligned
+	//NB: offset for mmap() must be page aligned
+	offset -= offset & int64(^(os.Getpagesize() - 1))
+
 	return uintptr(C.mmap(C.NULL, C.size_t(length), C.int(cprot), C.int(flags), C.int(fd), C.longlong(offset))), nil
 }
 
