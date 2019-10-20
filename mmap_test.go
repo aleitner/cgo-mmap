@@ -93,6 +93,10 @@ func TestMmap(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, len(testWriteText), len(buf))
 		require.True(t, bytes.Equal(testWriteText, buf))
+
+		// Try to write again while already seeked to the end of the file
+		_, err = mmap.Write(testWriteText)
+		require.Error(t, err)
 	}
 
 	err = mmap.Close()
