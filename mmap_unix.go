@@ -21,10 +21,11 @@ const (
 	// TODO: Add other mappings
 )
 
-// Mmap creates a memory map of a file
-func Mmap(length, offset int64, prot, flags int, fd uintptr) (uintptr, error) {
+// mmap creates a memory map of a file
+func mmap(length, offset int64, prot, flags int, fd uintptr) (uintptr, error) {
 	var cprot C.int
 
+	// TODO: Check if go bitwise `|` operator works on C.int properly
 	switch(prot) {
 	case PROT_READ:
 		cprot = C.PROT_READ
@@ -57,8 +58,8 @@ func Mmap(length, offset int64, prot, flags int, fd uintptr) (uintptr, error) {
 	return uintptr(C.mmap(C.NULL, C.size_t(length), C.int(cprot), C.int(flags), C.int(fd), C.longlong(offset))), nil
 }
 
-// Munmap deletes the mappings for the specified address range
-func Munmap(address uintptr, length int64) error {
+// munmap deletes the mappings for the specified address range
+func munmap(address uintptr, length int64) error {
 	success := int(C.munmap(unsafe.Pointer(address), C.ulong(length)))
 	if success == -1 {
 		// TODO: Check errno

@@ -23,7 +23,7 @@ func main() {
 	}
 
 
-	mmap, err := cgommap.NewMmap(int64(len(exampleText)),0, cgommap.PROT_READWRITE, cgommap.MAP_SHARED, file.Fd())
+	mmap, err := cgommap.New(int64(len(exampleText)),0, cgommap.PROT_READWRITE, cgommap.MAP_SHARED, file.Fd())
 	if err != nil {
 		panic(err)
 	}

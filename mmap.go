@@ -29,13 +29,12 @@ type MMAP struct {
 	mtx sync.Mutex
 }
 
-// NewMmap opens a memory mapped file.
-// TODO: Check if go bitwise `|` operator works on C.int properly
-func NewMmap(length, offset int64, prot, flags int, fd uintptr) (mmap *MMAP, err error) {
+// New opens a memory mapped file.
+func New(length, offset int64, prot, flags int, fd uintptr) (m *MMAP, err error) {
 	if offset > length || offset < 0 {
 		return nil, errors.New("Invalid offset")
 	}
-	address, err := Mmap(length, offset, prot, flags, fd)
+	address, err := mmap(length, offset, prot, flags, fd)
 	if err != nil {
 		return nil, err
 	}
@@ -47,36 +46,36 @@ func NewMmap(length, offset int64, prot, flags int, fd uintptr) (mmap *MMAP, err
 }
 
 // Write buf to mmap
-func (mmap *MMAP) Write(buf []byte) (writeLen int, err error) {
+func (m *MMAP) Write(buf []byte) (writeLen int, err error) {
 	writeLen = len(buf)
 
 	// NB: Should we just return instead of partial Write?
-	if int64(writeLen) > mmap.size - mmap.offset {
-		writeLen = int(mmap.size - mmap.offset)
+	if int64(writeLen) > m.size - m.offset {
+		writeLen = int(m.size - m.offset)
 		if writeLen == 0 {
 			return 0, io.EOF
 		}
 		err = errors.New("Partial Write")
 	}
 
-	C.memcpy(unsafe.Pointer(mmap.addr + uintptr(mmap.offset)), unsafe.Pointer(&buf[0]), C.size_t(writeLen))
+	C.memcpy(unsafe.Pointer(m.addr + uintptr(m.offset)), unsafe.Pointer(&buf[0]), C.size_t(writeLen))
 
-	mmap.mtx.Lock()
-	defer mmap.mtx.Unlock()
-	mmap.offset += int64(writeLen)
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	m.offset += int64(writeLen)
 
 	return writeLen, err
 }
 
 // Read from mmap into buf
-func (mmap *MMAP) Read(buf []byte) (n int, err error) {
-	toReadLen := mmap.size-mmap.offset
+func (m *MMAP) Read(buf []byte) (n int, err error) {
+	toReadLen := m.size-m.offset
 
 	var sl = struct {
 		addr uintptr
 		len  int
 		cap  int
-	}{mmap.addr+uintptr(mmap.offset), 0, int(toReadLen)}
+	}{m.addr+uintptr(m.offset), 0, int(toReadLen)}
 
 	mmapBuf := *(*[]byte)(unsafe.Pointer(&sl))
 
@@ -86,47 +85,60 @@ func (mmap *MMAP) Read(buf []byte) (n int, err error) {
 		return 0, io.EOF
 	}
 
-	mmap.mtx.Lock()
-	defer mmap.mtx.Unlock()
-	mmap.offset += int64(toReadLen)
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	m.offset += int64(toReadLen)
 
 	return int(toReadLen), err
 }
 
 // Seek mmap
-func (mmap *MMAP) Seek(off int64, origin int) (newOffset int64, err error) {
+func (m *MMAP) Seek(off int64, origin int) (newOffset int64, err error) {
 	switch origin {
 	case io.SeekCurrent:
-		newOffset = off + mmap.offset
+		newOffset = off + m.offset
 		break
 	case io.SeekStart:
 		newOffset = off
 		break
 	case io.SeekEnd:
-		newOffset = off + mmap.size - 1
+		newOffset = off + m.size - 1
 		break
 	default:
-		return mmap.offset, errors.New("Invalid origin")
+		return m.offset, errors.New("Invalid origin")
 	}
 
-	if newOffset > mmap.size {
-		return mmap.offset, errors.New("Invalid Seek")
+	if newOffset > m.size {
+		return m.offset, errors.New("Invalid Seek")
 	}
 
-	mmap.mtx.Lock()
-	defer mmap.mtx.Unlock()
-	mmap.offset = newOffset
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	m.offset = newOffset
 
 	return newOffset, nil
 }
 
 // Size of the mmap
-func (mmap *MMAP) Size() int64 {
-	return mmap.size
+func (m MMAP) Size() int64 {
+	return m.size
 }
 
 // Close mmap
-func (mmap *MMAP) Close() error {
-	return Munmap(mmap.addr, mmap.size)
+func (m MMAP) Close() error {
+	return munmap(m.addr, m.size)
 }
 
+// TODO
+
+func (m MMAP) lock() error {
+	return nil
+}
+
+func (m MMAP) unlock() error {
+	return nil
+}
+
+func (m MMAP) Flush() error {
+	return nil
+}

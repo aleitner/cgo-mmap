@@ -25,7 +25,7 @@ func TestMmap(t *testing.T) {
 	require.Equal(t, len(testText), n)
 	require.NoError(t, err)
 
-	mmap, err := cgommap.NewMmap(int64(len(testText)),0, cgommap.PROT_READWRITE, cgommap.MAP_SHARED, file.Fd())
+	mmap, err := cgommap.New(int64(len(testText)),0, cgommap.PROT_READWRITE, cgommap.MAP_SHARED, file.Fd())
 	require.NoError(t, err)
 
 	defer func() {

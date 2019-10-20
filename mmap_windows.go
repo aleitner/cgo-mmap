@@ -4,8 +4,8 @@ package cgommap
 // #include <windows.h>
 import "C"
 
-// Mmap creates a memory map of a file
-func Mmap(length, offset int64, prot, flags int, fd uintptr) (uintptr, error) {
+// mmap creates a memory map of a file
+func mmap(length, offset int64, prot, flags int, fd uintptr) (uintptr, error) {
 	fh := C.HANDLE(C._get_osfhandle(C.int(fd)))
 	if (fh == C.INVALID_HANDLE_VALUE) {
 		return 0, errors.New("Invalid Handle Value")
@@ -53,8 +53,8 @@ func Mmap(length, offset int64, prot, flags int, fd uintptr) (uintptr, error) {
 	return C.MapViewOfFileEx(mh, C.int(desiredAccess), C.int(0), C.int(0), C.int(length), C.NULL), nil
 }
 
-// Munmap deletes the mappings for the specified address range
-func Munmap(address uintptr, length int64) error {
+// munmap deletes the mappings for the specified address range
+func munmap(address uintptr, length int64) error {
 	C.FlushViewOfFile(unsafe.Pointer(address), C.int(length))
 	C.UnmapViewOfFile(unsafe.Pointer(address))
 }
