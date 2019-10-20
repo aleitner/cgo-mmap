@@ -48,21 +48,23 @@ func NewMmap(length, offset int64, prot, flags, fd int) (mmap *MMAP, err error) 
 }
 
 // Write buf to mmap
-func (mmap *MMAP) Write(buf []byte) (writeLen int64, err error) {
-	writeLen = int64(len(buf))
+func (mmap *MMAP) Write(buf []byte) (writeLen int, err error) {
+	writeLen = len(buf)
 
 	// NB: Should we just return instead of partial Write?
-	if writeLen > mmap.size - mmap.offset {
-		writeLen = mmap.size - mmap.offset
+	if int64(writeLen) > mmap.size - mmap.offset {
+		writeLen = int(mmap.size - mmap.offset)
+		if writeLen == 0 {
+			return 0, io.EOF
+		}
 		err = errors.New("Partial Write")
 	}
 
-	// TODO: Does this math work when moving around the memory?
 	C.memcpy(unsafe.Pointer(mmap.addr + uintptr(mmap.offset)), unsafe.Pointer(&buf[0]), C.size_t(writeLen))
 
 	mmap.mtx.Lock()
 	defer mmap.mtx.Unlock()
-	mmap.offset += writeLen
+	mmap.offset += int64(writeLen)
 
 	return writeLen, err
 }

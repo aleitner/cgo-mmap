@@ -35,7 +35,7 @@ func TestMmap(t *testing.T) {
 	fd, err := f.Fileno()
 	require.NoError(t, err)
 
-	mmap, err := cgommap.NewMmap(int64(len(testText)),0, cgommap.PROT_READ, cgommap.MAP_SHARED, fd)
+	mmap, err := cgommap.NewMmap(int64(len(testText)),0, cgommap.PROT_READWRITE, cgommap.MAP_SHARED, fd)
 	require.NoError(t, err)
 
 	{ // Read Test
@@ -61,8 +61,39 @@ func TestMmap(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, len(testText), len(buf))
 		require.True(t, bytes.Equal(testText, buf))
+
+		// Seek to middle of text
+		off, err = mmap.Seek(int64(len(testText)/2), cgommap.SEEK_SET)
+		require.NoError(t, err)
+		require.Equal(t, int64(len(testText)/2), off)
+
+		buf = make([]byte, len(testText)/2)
+		n, err = mmap.Read(buf[0:])
+		require.NoError(t, err)
+		require.Equal(t, len(testText)/2, len(buf))
+		require.True(t, bytes.Equal(testText[len(testText)/2:], buf))
 	}
 
+	{ // Write Test
+		off, err := mmap.Seek(0, cgommap.SEEK_SET)
+		require.NoError(t, err)
+		require.Equal(t, int64(0), off)
+
+		testWriteText := []byte("Writing into the darkest abyss")
+		n, err := mmap.Write(testWriteText)
+		require.NoError(t, err)
+		require.Equal(t, len(testWriteText), n)
+
+		off, err = mmap.Seek(0, cgommap.SEEK_SET)
+		require.NoError(t, err)
+		require.Equal(t, int64(0), off)
+
+		buf := make([]byte, len(testWriteText))
+		n, err = mmap.Read(buf[0:])
+		require.NoError(t, err)
+		require.Equal(t, len(testWriteText), len(buf))
+		require.True(t, bytes.Equal(testWriteText, buf))
+	}
 
 	err = mmap.Close()
 	require.NoError(t, err)
