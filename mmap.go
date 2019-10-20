@@ -154,20 +154,22 @@ func (m MMAP) Size() int64 {
 	return m.size
 }
 
-// Close mmap
+// Close will unmap the pages of memory
 func (m MMAP) Close() error {
 	return unmap(m.addr, m.size)
 }
 
-
+// Lock the mapped memory
 func (m MMAP) Lock() error {
 	return lock(m.addr, m.size)
 }
 
+// Unlock the mapped memory
 func (m MMAP) Unlock() error {
 	return unlock(m.addr, m.size)
 }
 
+// Flush the mapped memory into the filesystem
 func (m MMAP) Flush() error {
 	return flush(m.addr, m.size, MS_SYNC)
 }
