@@ -64,7 +64,7 @@ func mmap(length, offset int64, prot, flags int, fd uintptr) (uintptr, error) {
 	// until the bit that represents the power of two corresponding to the page size.
 	offset -= offset & int64(^(os.Getpagesize() - 1))
 
-	return uintptr(C.mmap(C.NULL, C.size_t(length), C.int(cprot), C.int(flags), C.int(fd), C.longlong(offset))), nil
+	return uintptr(C.mmap(C.NULL, C.size_t(length), C.int(cprot), C.int(flags), C.int(fd), C.int64_t(offset))), nil
 }
 
 // unmap deletes the mappings for the specified address range
